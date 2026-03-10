@@ -8,12 +8,12 @@ header('Content-Type: application/json; charset=utf-8');
 session_start();
 
 // ── Env ───────────────────────────────────────────────────────────────────────
-$DB_HOST     = getenv('DB_HOST')        ?: 'localhost';
-$DB_NAME     = getenv('DB_NAME')        ?: 'postgres';
-$DB_USER     = getenv('DB_USER')        ?: 'postgres';
-$DB_PASSWORD = getenv('DB_PASSWORD')    ?: '';
-$DB_PORT     = getenv('DB_PORT')        ?: '5432';
-$ADMIN_PWD   = getenv('ADMIN_PASSWORD') ?: 'admin123';
+$DB_HOST     = getenv('db.gwuddnuargygxzomafvo.supabase.co')        ?: 'localhost';
+$DB_NAME     = getenv('postgres')        ?: 'postgres';
+$DB_USER     = getenv('postgres')        ?: 'postgres';
+$DB_PASSWORD = getenv('200@79Deecl')    ?: '200@79Deecl';
+$DB_PORT     = getenv('5432')        ?: '5432';
+$ADMIN_PWD   = getenv('admin123') ?: 'admin123';
 
 // ── PDO ───────────────────────────────────────────────────────────────────────
 function db(): PDO {
