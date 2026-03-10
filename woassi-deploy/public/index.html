@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Woassi · GLY — Inscription Foncière</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- jsPDF pour la génération PDF côté client -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --t:#8B5E3C;--o:#C9963A;--s:#E8D5A3;
+    --f:#3D6B3A;--n:#1A1208;--b:#F7F0E0;
+  }
+  *{box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;background:var(--b);color:var(--n);min-height:100vh}
+  .serif{font-family:'Playfair Display',serif}
+
+  .hero{background:linear-gradient(150deg,#2a4f28 0%,#1A1208 68%);position:relative;overflow:hidden}
+  .hero::after{content:'';position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,rgba(201,150,58,.05) 0,rgba(201,150,58,.05) 1px,transparent 1px,transparent 28px);
+    pointer-events:none}
+
+  .card{background:#fff;border-radius:1.5rem;
+    box-shadow:0 20px 60px rgba(26,18,8,.1),0 4px 12px rgba(26,18,8,.06)}
+
+  .inp{width:100%;padding:.72rem 1rem;border:2px solid #e2d4ba;border-radius:.6rem;
+    font-family:'DM Sans',sans-serif;font-size:.95rem;background:var(--b);
+    transition:border-color .2s,box-shadow .2s;outline:none}
+  .inp:focus{border-color:var(--t);box-shadow:0 0 0 3px rgba(139,94,60,.13)}
+  label{font-weight:500;font-size:.88rem;color:#5a4020;display:block;margin-bottom:.3rem}
+
+  .btn-gold{background:linear-gradient(135deg,var(--t),var(--o));color:#fff;
+    font-weight:600;padding:.8rem 1.5rem;border-radius:.7rem;border:none;cursor:pointer;
+    width:100%;font-size:.97rem;letter-spacing:.02em;
+    transition:transform .15s,box-shadow .15s}
+  .btn-gold:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(201,150,58,.38)}
+  .btn-sm{padding:.4rem .9rem;border-radius:.45rem;font-size:.8rem;font-weight:600;
+    cursor:pointer;border:none;transition:opacity .15s}
+  .btn-sm:hover{opacity:.82}
+
+  #toast{position:fixed;bottom:1.8rem;right:1.8rem;z-index:9999;
+    padding:.85rem 1.4rem;border-radius:.7rem;font-weight:500;font-size:.88rem;
+    opacity:0;transform:translateY(12px);transition:all .3s;pointer-events:none;max-width:320px}
+  #toast.on{opacity:1;transform:translateY(0)}
+  .tok{background:var(--f);color:#fff}
+  .terr{background:#b91c1c;color:#fff}
+
+  .tbl th{background:var(--n);color:var(--s);padding:.65rem .9rem;
+    font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+  .tbl td{padding:.65rem .9rem;border-bottom:1px solid #f0e4c8;font-size:.88rem;vertical-align:middle}
+  .tbl tr:hover td{background:#fdf6e8}
+
+  .overlay{position:fixed;inset:0;background:rgba(26,18,8,.55);
+    display:flex;align-items:center;justify-content:center;z-index:1000;
+    backdrop-filter:blur(3px)}
+  .mbox{background:#fff;border-radius:1.2rem;padding:1.8rem;
+    width:100%;max-width:460px;margin:1rem;
+    box-shadow:0 24px 80px rgba(26,18,8,.22)}
+
+  .pg{display:none}
+  .pg.on{display:block;animation:up .35s ease}
+  @keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  .spinner{width:2rem;height:2rem;border:3px solid rgba(201,150,58,.25);
+    border-top-color:var(--o);border-radius:50%;animation:spin .7s linear infinite;margin:2rem auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Bouton PDF */
+  .btn-pdf{
+    display:inline-flex;align-items:center;gap:.45rem;
+    background:linear-gradient(135deg,#1a3a6b,#2563eb);
+    color:#fff;font-weight:600;padding:.55rem 1.1rem;
+    border-radius:.6rem;border:none;cursor:pointer;font-size:.82rem;
+    letter-spacing:.02em;transition:transform .15s,box-shadow .15s;
+    box-shadow:0 4px 14px rgba(37,99,235,.3)
+  }
+  .btn-pdf:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(37,99,235,.4)}
+  .btn-pdf svg{width:1rem;height:1rem}
+
+  /* Badge stats */
+  .stat-badge{
+    display:inline-flex;align-items:center;gap:.4rem;
+    background:linear-gradient(135deg,#fdf6e8,#f5e6c8);
+    border:1px solid #e2c97e;border-radius:.6rem;
+    padding:.4rem .85rem;font-size:.8rem;font-weight:600;color:#7a4f0d
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero text-white pt-14 pb-12 px-4 text-center">
+  <div class="relative z-10 max-w-2xl mx-auto">
+    <p class="text-xs tracking-widest uppercase mb-3" style="color:var(--o)">Projet Foncier · Woassi · GLY</p>
+    <h1 class="serif text-4xl md:text-5xl font-black leading-tight mb-3">
+      Acquisition des Terres<br/>à <span style="color:var(--o)">Woassi</span>
+    </h1>
+    <p class="text-base opacity-70 max-w-md mx-auto">
+      Inscrivez-vous pour manifester votre intérêt et réserver votre superficie.
+    </p>
+    <div class="flex justify-center gap-3 mt-7 flex-wrap">
+      <button onclick="go('public')"
+        class="px-5 py-2 rounded-full text-sm font-semibold border border-white/25 hover:bg-white/10 transition">
+        📋 Inscription
+      </button>
+      <button onclick="go('login')" id="btn-admin"
+        class="px-5 py-2 rounded-full text-sm font-semibold border border-white/25 hover:bg-white/10 transition">
+        🔐 Espace admin
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-10">
+
+  <!-- PAGE PUBLIQUE -->
+  <div id="pg-public" class="pg on">
+    <div class="card p-8 max-w-md mx-auto">
+      <h2 class="serif text-2xl font-bold mb-1">Formulaire d'inscription</h2>
+      <p class="text-sm mb-6 opacity-50">Tous les champs sont obligatoires.</p>
+      <div class="space-y-4">
+        <div><label>Nom</label><input id="p-nom" class="inp" placeholder="Ex : KOUASSI"/></div>
+        <div><label>Prénom</label><input id="p-prenom" class="inp" placeholder="Ex : Ama"/></div>
+        <div><label>Téléphone</label><input id="p-tel" class="inp" type="tel" placeholder="+225 07 00 00 00 00"/></div>
+        <div><label>Superficie envisagée</label><input id="p-sup" class="inp" placeholder="Ex : 500 m² ou 1 ha"/></div>
+        <button class="btn-gold mt-1" onclick="inscrire()">Soumettre ma demande →</button>
+      </div>
+      <div id="p-ok" style="display:none" class="mt-6 p-4 rounded-xl text-center bg-green-50">
+        <div class="text-3xl mb-1">🌱</div>
+        <p class="font-semibold text-green-800">Inscription enregistrée !</p>
+        <p class="text-sm text-green-600 mt-1">Nous vous contacterons prochainement.</p>
+        <button onclick="resetForm()" class="mt-3 text-xs underline text-green-700">Nouvelle inscription</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE LOGIN ADMIN -->
+  <div id="pg-login" class="pg">
+    <div class="card p-8 max-w-sm mx-auto text-center">
+      <div class="text-5xl mb-4">🔐</div>
+      <h2 class="serif text-2xl font-bold mb-1">Accès administrateur</h2>
+      <p class="text-sm mb-6 opacity-50">Réservé aux gestionnaires du projet.</p>
+      <input id="a-pwd" type="password" class="inp mb-4" placeholder="Mot de passe"
+        onkeydown="if(event.key==='Enter')login()"/>
+      <button class="btn-gold" onclick="login()">Se connecter</button>
+    </div>
+  </div>
+
+  <!-- PAGE DASHBOARD ADMIN -->
+  <div id="pg-admin" class="pg">
+    <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+      <div>
+        <h2 class="serif text-2xl font-bold">Tableau de bord</h2>
+        <p class="text-sm opacity-50" id="a-count">—</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <!-- Bouton PDF -->
+        <button onclick="exportPDF()" class="btn-pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+          Exporter PDF
+        </button>
+        <button onclick="openAdd()"
+          class="btn-sm text-white px-4 py-2 rounded-lg" style="background:var(--f)">
+          + Ajouter
+        </button>
+        <button onclick="logout()"
+          class="btn-sm border px-4 py-2 rounded-lg" style="border-color:var(--t);color:var(--t)">
+          Déconnexion
+        </button>
+      </div>
+    </div>
+    <div class="card overflow-hidden">
+      <div style="overflow-x:auto">
+        <table class="tbl w-full" style="min-width:580px">
+          <thead>
+            <tr>
+              <th>#</th><th>Nom</th><th>Prénom</th>
+              <th>Téléphone</th><th>Superficie</th><th>Date</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="a-tbody">
+            <tr><td colspan="7"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL FORM -->
+<div id="m-form" class="overlay" style="display:none">
+  <div class="mbox">
+    <h3 id="m-title" class="serif text-xl font-bold mb-5">Ajouter un acteur</h3>
+    <input type="hidden" id="m-id"/>
+    <div class="space-y-3">
+      <div><label>Nom</label><input id="m-nom" class="inp"/></div>
+      <div><label>Prénom</label><input id="m-prenom" class="inp"/></div>
+      <div><label>Téléphone</label><input id="m-tel" class="inp" type="tel"/></div>
+      <div><label>Superficie</label><input id="m-sup" class="inp"/></div>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button onclick="closeM('m-form')"
+        class="flex-1 py-2 rounded-lg border font-semibold text-sm" style="color:#888;border-color:#ddd">
+        Annuler
+      </button>
+      <button onclick="saveForm()" class="flex-1 btn-gold" style="padding:.7rem">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DELETE -->
+<div id="m-del" class="overlay" style="display:none">
+  <div class="mbox text-center">
+    <div class="text-4xl mb-3">⚠️</div>
+    <h3 class="serif text-xl font-bold mb-2">Supprimer cet acteur ?</h3>
+    <p class="text-sm opacity-50 mb-6">Cette action est irréversible.</p>
+    <input type="hidden" id="del-id"/>
+    <div class="flex gap-3">
+      <button onclick="closeM('m-del')"
+        class="flex-1 py-2 rounded-lg border font-semibold text-sm" style="color:#888;border-color:#ddd">
+        Annuler
+      </button>
+      <button onclick="doDelete()"
+        class="flex-1 py-2 rounded-lg font-semibold text-sm text-white" style="background:#b91c1c">
+        Supprimer définitivement
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Base URL de l'API ─────────────────────────────────────────────────────────
+const API = '/api/index.php';
+const $ = id => document.getElementById(id);
+
+// Cache des données pour le PDF
+let _cachedRows = [];
+
+async function api(action, method='GET', body=null){
+  const o={method,headers:{'Content-Type':'application/json'}};
+  if(body) o.body=JSON.stringify(body);
+  try{
+    const r=await fetch(`${API}?action=${action}`,o);
+    return await r.json();
+  }catch(e){
+    return {ok:false,msg:'Erreur réseau : '+e.message};
+  }
+}
+
+function toast(msg,type='ok'){
+  const t=$('toast');
+  t.textContent=msg;
+  t.className=(type==='ok'?'tok':'terr')+' on';
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>{t.className=''},3200);
+}
+
+function go(page){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  $('pg-'+page).classList.add('on');
+}
+
+function closeM(id){$(id).style.display='none'}
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',e=>{if(e.target===o)o.style.display='none'});
+});
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function login(){
+  const pwd=$('a-pwd').value;
+  if(!pwd){toast('Entrez le mot de passe','err');return}
+  const r=await api('login','POST',{password:pwd});
+  if(r.ok){go('admin');loadData();}
+  else toast(r.msg||'Erreur','err');
+}
+
+async function logout(){
+  await api('logout');
+  $('a-pwd').value='';
+  go('public');
+}
+
+// ── Inscription ───────────────────────────────────────────────────────────────
+async function inscrire(){
+  const nom=$('p-nom').value.trim(),prenom=$('p-prenom').value.trim(),
+        tel=$('p-tel').value.trim(),sup=$('p-sup').value.trim();
+  if(!nom||!prenom||!tel||!sup){toast('Remplissez tous les champs','err');return}
+  const r=await api('inscrire','POST',{nom,prenom,telephone:tel,superficie:sup});
+  if(r.ok){
+    $('p-ok').style.display='block';
+    document.querySelector('#pg-public .space-y-4').style.display='none';
+    toast('Inscription enregistrée ✓');
+  }else toast(r.msg||'Erreur','err');
+}
+
+function resetForm(){
+  ['p-nom','p-prenom','p-tel','p-sup'].forEach(id=>$(id).value='');
+  $('p-ok').style.display='none';
+  document.querySelector('#pg-public .space-y-4').style.display='';
+}
+
+// ── Admin data ────────────────────────────────────────────────────────────────
+async function loadData(){
+  $('a-tbody').innerHTML='<tr><td colspan="7"><div class="spinner"></div></td></tr>';
+  const r=await api('lister');
+  if(!r.ok){toast('Erreur chargement','err');return}
+  const rows=r.data||[];
+  _cachedRows = rows; // Sauvegarde pour export PDF
+  $('a-count').textContent=`${rows.length} acteur${rows.length>1?'s':''} inscrit${rows.length>1?'s':''}`;
+  if(!rows.length){
+    $('a-tbody').innerHTML='<tr><td colspan="7" class="text-center py-10 opacity-30">Aucune inscription.</td></tr>';
+    return;
+  }
+  $('a-tbody').innerHTML=rows.map((row,i)=>`
+    <tr>
+      <td><span class="text-xs font-bold opacity-40">${i+1}</span></td>
+      <td class="font-semibold">${row.nom}</td>
+      <td>${row.prenom}</td>
+      <td>${row.telephone}</td>
+      <td>${row.superficie}</td>
+      <td class="opacity-40 text-xs">${new Date(row.created_at).toLocaleDateString('fr-FR')}</td>
+      <td>
+        <div class="flex gap-1">
+          <button class="btn-sm text-white px-3" style="background:var(--t)"
+            onclick='openEdit(${JSON.stringify(row)})'>Modifier</button>
+          <button class="btn-sm text-white px-3" style="background:#b91c1c"
+            onclick="openDel(${row.id})">Suppr.</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ── Modal form ────────────────────────────────────────────────────────────────
+function openAdd(){
+  $('m-title').textContent='Ajouter un acteur';
+  $('m-id').value='';
+  ['m-nom','m-prenom','m-tel','m-sup'].forEach(id=>$(id).value='');
+  $('m-form').style.display='flex';
+}
+function openEdit(row){
+  $('m-title').textContent="Modifier l'acteur";
+  $('m-id').value=row.id;
+  $('m-nom').value=row.nom;
+  $('m-prenom').value=row.prenom;
+  $('m-tel').value=row.telephone;
+  $('m-sup').value=row.superficie;
+  $('m-form').style.display='flex';
+}
+async function saveForm(){
+  const id=$('m-id').value;
+  const nom=$('m-nom').value.trim(),prenom=$('m-prenom').value.trim(),
+        tel=$('m-tel').value.trim(),sup=$('m-sup').value.trim();
+  if(!nom||!prenom||!tel||!sup){toast('Tous les champs sont requis','err');return}
+  const payload={nom,prenom,telephone:tel,superficie:sup};
+  const r=id
+    ?await api('modifier','PUT',{...payload,id:+id})
+    :await api('ajouter','POST',payload);
+  if(r.ok){closeM('m-form');toast(id?'Modifié ✓':'Ajouté ✓');loadData();}
+  else toast(r.msg||'Erreur','err');
+}
+
+// ── Suppression ───────────────────────────────────────────────────────────────
+function openDel(id){$('del-id').value=id;$('m-del').style.display='flex';}
+async function doDelete(){
+  const id=+$('del-id').value;
+  const r=await api('supprimer','DELETE',{id});
+  if(r.ok){closeM('m-del');toast('Supprimé');loadData();}
+  else toast(r.msg||'Erreur','err');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── GÉNÉRATION PDF ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+async function exportPDF(){
+  if(_cachedRows.length === 0){
+    toast('Aucune donnée à exporter','err');
+    return;
+  }
+
+  toast('Génération du PDF en cours…');
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const dateGen = new Date().toLocaleDateString('fr-FR', {
+    day:'2-digit', month:'long', year:'numeric'
+  });
+  const heureGen = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+
+  // ── Fond de page ──────────────────────────────────────────────────────────
+  doc.setFillColor(247, 240, 224); // --b
+  doc.rect(0, 0, pageW, pageH, 'F');
+
+  // ── Bandeau header ────────────────────────────────────────────────────────
+  doc.setFillColor(26, 18, 8); // --n
+  doc.rect(0, 0, pageW, 28, 'F');
+
+  // Accent doré
+  doc.setFillColor(201, 150, 58); // --o
+  doc.rect(0, 26, pageW, 2, 'F');
+
+  // Titre principal
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('PROJET FONCIER · WOASSI · GLY', pageW / 2, 11, { align: 'center' });
+
+  // Sous-titre
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(201, 150, 58);
+  doc.text('Liste officielle des acteurs inscrits — Acquisition des Terres à Woassi', pageW / 2, 18, { align: 'center' });
+
+  // Date en haut à droite
+  doc.setTextColor(200, 200, 180);
+  doc.setFontSize(8);
+  doc.text(`Généré le ${dateGen} à ${heureGen}`, pageW - 8, 23, { align: 'right' });
+
+  // ── Bloc info résumé ──────────────────────────────────────────────────────
+  const total = _cachedRows.length;
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(8, 32, 80, 14, 2, 2, 'F');
+  doc.setDrawColor(226, 212, 186);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(8, 32, 80, 14, 2, 2, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(139, 94, 60);
+  doc.text(String(total), 18, 42);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(90, 64, 32);
+  doc.text(`acteur${total > 1 ? 's' : ''} inscrit${total > 1 ? 's' : ''}`, 28, 42);
+
+  // ── Tableau des inscrits ──────────────────────────────────────────────────
+  const tableData = _cachedRows.map((row, i) => [
+    i + 1,
+    row.nom.toUpperCase(),
+    row.prenom,
+    row.telephone,
+    row.superficie,
+    new Date(row.created_at).toLocaleDateString('fr-FR')
+  ]);
+
+  doc.autoTable({
+    head: [['N°', 'NOM', 'PRÉNOM', 'TÉLÉPHONE', 'SUPERFICIE', 'DATE D\'INSCRIPTION']],
+    body: tableData,
+    startY: 50,
+    margin: { left: 8, right: 8 },
+    styles: {
+      font: 'helvetica',
+      fontSize: 9,
+      cellPadding: { top: 3.5, bottom: 3.5, left: 4, right: 4 },
+      overflow: 'linebreak',
+    },
+    headStyles: {
+      fillColor: [26, 18, 8],
+      textColor: [232, 213, 163],
+      fontStyle: 'bold',
+      fontSize: 8,
+      letterSpacing: 0.5,
+    },
+    alternateRowStyles: {
+      fillColor: [253, 246, 232],
+    },
+    bodyStyles: {
+      textColor: [26, 18, 8],
+      fillColor: [255, 255, 255],
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 12, fontStyle: 'bold', textColor: [139, 94, 60] },
+      1: { fontStyle: 'bold', cellWidth: 45 },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 42 },
+      4: { cellWidth: 40 },
+      5: { halign: 'center', cellWidth: 38, textColor: [100, 80, 40] },
+    },
+    // Ligne dorée sous l'en-tête
+    didDrawCell: (data) => {
+      if (data.section === 'head' && data.row.index === 0) {
+        doc.setDrawColor(201, 150, 58);
+        doc.setLineWidth(0.8);
+        doc.line(
+          data.cell.x, data.cell.y + data.cell.height,
+          data.cell.x + data.cell.width, data.cell.y + data.cell.height
+        );
+      }
+    },
+  });
+
+  // ── Pied de page sur chaque page ──────────────────────────────────────────
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    const y = pageH - 6;
+
+    doc.setFillColor(26, 18, 8);
+    doc.rect(0, pageH - 12, pageW, 12, 'F');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(201, 150, 58);
+    doc.text('Woassi · GLY — Document confidentiel', 8, y);
+
+    doc.setTextColor(180, 160, 120);
+    doc.text(`Page ${p} / ${totalPages}`, pageW / 2, y, { align: 'center' });
+    doc.text('www.woassi-gly.com', pageW - 8, y, { align: 'right' });
+  }
+
+  // ── Téléchargement ────────────────────────────────────────────────────────
+  const filename = `woassi-gly-inscrits-${new Date().toISOString().slice(0,10)}.pdf`;
+  doc.save(filename);
+  toast(`PDF exporté : ${filename} ✓`);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  const r=await api('me');
+  if(r.admin){go('admin');loadData();}
+})();
+</script>
+</body>
+</html>
